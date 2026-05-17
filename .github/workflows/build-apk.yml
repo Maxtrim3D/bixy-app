@@ -37,60 +37,36 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      # ── 6. Diagnostics + patch gradle plugin ─────────────────────────────
-      - name: Diagnose and fix React Native Gradle plugin
+      # ── 6. Diagnostics plugin ─────────────────────────────────────────────
+      - name: Diagnose React Native Gradle plugin
         run: |
           PLUGIN_DIR="node_modules/@react-native/gradle-plugin"
 
-          echo "=== npm package version ==="
+          echo "=== npm version ==="
           cat "$PLUGIN_DIR/package.json" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('version:', d.get('version','?'))" || echo "(no package.json)"
 
           echo ""
-          echo "=== Directory tree (3 levels) ==="
-          find "$PLUGIN_DIR" -maxdepth 3 | sort | head -80 || echo "(error)"
+          echo "=== Plugin gradle-wrapper.properties ==="
+          cat "$PLUGIN_DIR/gradle/wrapper/gradle-wrapper.properties" 2>/dev/null || echo "(missing)"
 
           echo ""
-          echo "=== settings.gradle.kts (original) ==="
+          echo "=== settings.gradle.kts ==="
           cat "$PLUGIN_DIR/settings.gradle.kts" 2>/dev/null || echo "(missing)"
 
           echo ""
-          echo "=== settings.gradle (original) ==="
-          cat "$PLUGIN_DIR/settings.gradle" 2>/dev/null || echo "(missing)"
+          echo "=== build.gradle.kts (full) ==="
+          cat "$PLUGIN_DIR/build.gradle.kts" 2>/dev/null || echo "(missing)"
 
           echo ""
-          echo "=== build.gradle.kts (first 60 lines) ==="
-          head -60 "$PLUGIN_DIR/build.gradle.kts" 2>/dev/null || echo "(missing)"
-
-          echo ""
-          echo "=== build.gradle (first 60 lines) ==="
-          head -60 "$PLUGIN_DIR/build.gradle" 2>/dev/null || echo "(missing)"
-
-          echo ""
-          echo "=== Replacing settings.gradle.kts with full repo config ==="
-          # NOTE: no heredoc (breaks YAML) — use echo lines instead
-          {
-            echo 'pluginManagement {'
-            echo '    repositories {'
-            echo '        google()'
-            echo '        mavenCentral()'
-            echo '        gradlePluginPortal()'
-            echo '    }'
-            echo '}'
-            echo 'rootProject.name = "react-native-gradle-plugin"'
-          } > "$PLUGIN_DIR/settings.gradle.kts"
-          echo "✅ settings.gradle.kts rewritten"
-          cat "$PLUGIN_DIR/settings.gradle.kts"
-
-          echo ""
-          echo "=== android/settings.gradle ==="
-          cat android/settings.gradle
+          echo "=== android/gradle-wrapper.properties ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
 
       # ── 7. Gradle wrapper JAR ─────────────────────────────────────────────
       - name: Download Gradle wrapper JAR
         run: |
           mkdir -p android/gradle/wrapper
           curl -fsSL -o android/gradle/wrapper/gradle-wrapper.jar \
-            "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar"
+            "https://github.com/gradle/gradle/raw/v8.3.0/gradle/wrapper/gradle-wrapper.jar"
           ls -lh android/gradle/wrapper/gradle-wrapper.jar
 
       # ── 8. Keystore debug ────────────────────────────────────────────────
@@ -128,6 +104,5 @@ jobs:
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           SIZE=$(du -sh $APK | cut -f1)
-          echo "## APK Bixy generé" >> $GITHUB_STEP_SUMMARY
-          echo "Fichier: app-debug.apk · Taille: $SIZE" >> $GITHUB_STEP_SUMMARY
-          echo "Telecharge l'APK dans l'onglet Artifacts." >> $GITHUB_STEP_SUMMARY
+          echo "APK Bixy: app-debug.apk - Taille: $SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "Telecharge dans l'onglet Artifacts." >> $GITHUB_STEP_SUMMARY
