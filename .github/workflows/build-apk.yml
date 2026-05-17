@@ -37,14 +37,35 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      # ── 6. Télécharger gradle-wrapper.jar (manquant dans le repo) ─────────
+      # ── 6. Exposer @react-native/gradle-plugin à la racine ───────────────
+      - name: Expose React Native Gradle plugin
+        run: |
+          PLUGIN_ROOT="node_modules/@react-native/gradle-plugin"
+          if [ -d "$PLUGIN_ROOT" ]; then
+            echo "✅ gradle-plugin already at root"
+          else
+            # Cherche dans les sous-dossiers de node_modules
+            FOUND=$(find node_modules/react-native -name "gradle-plugin" -type d 2>/dev/null | head -1)
+            if [ -n "$FOUND" ]; then
+              mkdir -p node_modules/@react-native
+              cp -r "$FOUND" node_modules/@react-native/gradle-plugin
+              echo "✅ Copied gradle-plugin from: $FOUND"
+            else
+              echo "❌ gradle-plugin not found — listing react-native deps:"
+              ls node_modules/react-native/node_modules/ 2>/dev/null | head -20 || true
+              ls node_modules/@react-native/ 2>/dev/null | head -20 || true
+              exit 1
+            fi
+          fi
+
+      # ── 7. Télécharger gradle-wrapper.jar ────────────────────────────────
       - name: Download Gradle wrapper JAR
         run: |
           mkdir -p android/gradle/wrapper
           curl -fsSL -o android/gradle/wrapper/gradle-wrapper.jar \
             "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar"
 
-      # ── 7. Keystore de debug ──────────────────────────────────────────────
+      # ── 8. Keystore de debug ──────────────────────────────────────────────
       - name: Generate debug keystore
         run: |
           mkdir -p android/app
@@ -55,18 +76,18 @@ jobs:
             -dname "CN=Bixy Debug,O=Maxtrim3D,C=BE" \
             -storepass android -keypass android
 
-      # ── 8. Rendre gradlew exécutable ──────────────────────────────────────
+      # ── 9. Rendre gradlew exécutable ──────────────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 9. Build APK debug ────────────────────────────────────────────────
+      # ── 10. Build APK debug ───────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
 
-      # ── 10. Upload APK ─────────────────────────────────────────────────────
+      # ── 11. Upload APK ─────────────────────────────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -74,7 +95,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── 11. Résumé ─────────────────────────────────────────────────────────
+      # ── 12. Résumé ─────────────────────────────────────────────────────────
       - name: Summary
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
