@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      # ── 1. Récupérer le code ──────────────────────────────────────────────
+      # ── 1. Code ───────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -33,17 +33,21 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # ── 5. Installer les dépendances JS ──────────────────────────────────
+      # ── 5. Dépendances JS ────────────────────────────────────────────────
       - name: Install Node dependencies
         run: npm install
 
-      # ── 6. Diagnostics + fix React Native Gradle plugin ──────────────────
+      # ── 6. Diagnostics + patch gradle plugin ─────────────────────────────
       - name: Diagnose and fix React Native Gradle plugin
         run: |
           PLUGIN_DIR="node_modules/@react-native/gradle-plugin"
 
+          echo "=== npm package version ==="
+          cat "$PLUGIN_DIR/package.json" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('version:', d.get('version','?'))" || echo "(no package.json)"
+
+          echo ""
           echo "=== Directory tree (3 levels) ==="
-          find "$PLUGIN_DIR" -maxdepth 3 | sort | head -60 || echo "(error)"
+          find "$PLUGIN_DIR" -maxdepth 3 | sort | head -80 || echo "(error)"
 
           echo ""
           echo "=== settings.gradle.kts (original) ==="
@@ -54,38 +58,34 @@ jobs:
           cat "$PLUGIN_DIR/settings.gradle" 2>/dev/null || echo "(missing)"
 
           echo ""
-          echo "=== build.gradle.kts (original) ==="
-          cat "$PLUGIN_DIR/build.gradle.kts" 2>/dev/null || echo "(missing)"
+          echo "=== build.gradle.kts (first 60 lines) ==="
+          head -60 "$PLUGIN_DIR/build.gradle.kts" 2>/dev/null || echo "(missing)"
 
           echo ""
-          echo "=== build.gradle (original) ==="
-          cat "$PLUGIN_DIR/build.gradle" 2>/dev/null || echo "(missing)"
+          echo "=== build.gradle (first 60 lines) ==="
+          head -60 "$PLUGIN_DIR/build.gradle" 2>/dev/null || echo "(missing)"
 
-          # Force une settings.gradle.kts propre avec repos complets
-          # pour que Gradle puisse compiler le plugin inclus
-          cat > "$PLUGIN_DIR/settings.gradle.kts" << 'SETTINGS_EOF'
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-rootProject.name = "react-native-gradle-plugin"
-SETTINGS_EOF
-          echo "✅ Replaced settings.gradle.kts with full repository config"
+          echo ""
+          echo "=== Replacing settings.gradle.kts with full repo config ==="
+          # NOTE: no heredoc (breaks YAML) — use echo lines instead
+          {
+            echo 'pluginManagement {'
+            echo '    repositories {'
+            echo '        google()'
+            echo '        mavenCentral()'
+            echo '        gradlePluginPortal()'
+            echo '    }'
+            echo '}'
+            echo 'rootProject.name = "react-native-gradle-plugin"'
+          } > "$PLUGIN_DIR/settings.gradle.kts"
+          echo "✅ settings.gradle.kts rewritten"
+          cat "$PLUGIN_DIR/settings.gradle.kts"
 
           echo ""
           echo "=== android/settings.gradle ==="
           cat android/settings.gradle
 
-      # ── 7. Télécharger gradle-wrapper.jar ────────────────────────────────
+      # ── 7. Gradle wrapper JAR ─────────────────────────────────────────────
       - name: Download Gradle wrapper JAR
         run: |
           mkdir -p android/gradle/wrapper
@@ -93,7 +93,7 @@ SETTINGS_EOF
             "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar"
           ls -lh android/gradle/wrapper/gradle-wrapper.jar
 
-      # ── 8. Keystore de debug ──────────────────────────────────────────────
+      # ── 8. Keystore debug ────────────────────────────────────────────────
       - name: Generate debug keystore
         run: |
           mkdir -p android/app
@@ -104,18 +104,18 @@ SETTINGS_EOF
             -dname "CN=Bixy Debug,O=Maxtrim3D,C=BE" \
             -storepass android -keypass android
 
-      # ── 9. Rendre gradlew exécutable ──────────────────────────────────────
+      # ── 9. gradlew exécutable ────────────────────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 10. Build APK debug ───────────────────────────────────────────────
+      # ── 10. Build APK ─────────────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
 
-      # ── 11. Upload APK ─────────────────────────────────────────────────────
+      # ── 11. Upload APK ────────────────────────────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -123,11 +123,11 @@ SETTINGS_EOF
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── 12. Résumé ─────────────────────────────────────────────────────────
+      # ── 12. Résumé ────────────────────────────────────────────────────────
       - name: Summary
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           SIZE=$(du -sh $APK | cut -f1)
-          echo "## ✅ APK Bixy généré" >> $GITHUB_STEP_SUMMARY
-          echo "**Fichier :** \`app-debug.apk\` · **Taille :** $SIZE" >> $GITHUB_STEP_SUMMARY
-          echo "👉 Télécharge l'APK dans l'onglet **Artifacts** ci-dessus." >> $GITHUB_STEP_SUMMARY
+          echo "## APK Bixy generé" >> $GITHUB_STEP_SUMMARY
+          echo "Fichier: app-debug.apk · Taille: $SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "Telecharge l'APK dans l'onglet Artifacts." >> $GITHUB_STEP_SUMMARY
