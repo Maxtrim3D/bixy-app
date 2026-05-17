@@ -21,7 +21,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: npm
 
       # ── 3. JDK 17 (requis par Gradle 8 + Android) ─────────────────────
       - name: Setup JDK 17
@@ -37,7 +36,7 @@ jobs:
 
       # ── 5. Installer les dépendances JS ──────────────────────────────────
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install
 
       # ── 6. Keystore de debug (généré à la volée — usage interne) ─────────
       - name: Generate debug keystore
