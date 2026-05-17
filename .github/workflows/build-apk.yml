@@ -35,7 +35,7 @@ jobs:
 
       # ── 5. Installer les dépendances JS ──────────────────────────────────
       - name: Install Node dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install
 
       # ── 6. Télécharger gradle-wrapper.jar (manquant dans le repo) ─────────
       - name: Download Gradle wrapper JAR

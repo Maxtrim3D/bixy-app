@@ -23,8 +23,7 @@
     "react-native-reanimated": "^3.8.1",
     "@react-native-async-storage/async-storage": "^1.23.1",
     "react-native-vector-icons": "^10.1.0",
-    "@react-native-community/netinfo": "^11.3.1",
-    "react-native-app-state": "^1.0.0"
+    "@react-native-community/netinfo": "^11.3.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
@@ -32,6 +31,7 @@
     "@babel/runtime": "^7.20.0",
     "@react-native/babel-preset": "0.73.21",
     "@react-native/eslint-config": "0.73.2",
+    "@react-native/gradle-plugin": "0.73.6",
     "@react-native/metro-config": "0.73.5",
     "@react-native/typescript-config": "0.73.1",
     "@types/react": "^18.2.6",
