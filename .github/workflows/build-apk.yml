@@ -37,25 +37,27 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      # ── 6. Exposer @react-native/gradle-plugin à la racine ───────────────
-      - name: Expose React Native Gradle plugin
+      # ── 6. Debug + fix React Native Gradle plugin ─────────────────────────
+      - name: Fix React Native Gradle plugin
         run: |
-          PLUGIN_ROOT="node_modules/@react-native/gradle-plugin"
-          if [ -d "$PLUGIN_ROOT" ]; then
-            echo "✅ gradle-plugin already at root"
+          PLUGIN_DIR="node_modules/@react-native/gradle-plugin"
+          echo "=== Contents of $PLUGIN_DIR ==="
+          ls -la "$PLUGIN_DIR/" || echo "(directory missing)"
+
+          # Gradle includeBuild needs settings.gradle.kts — create it if missing
+          if [ ! -f "$PLUGIN_DIR/settings.gradle.kts" ] && [ ! -f "$PLUGIN_DIR/settings.gradle" ]; then
+            echo 'rootProject.name = "react-native-gradle-plugin"' > "$PLUGIN_DIR/settings.gradle.kts"
+            echo "✅ Created missing settings.gradle.kts"
           else
-            # Cherche dans les sous-dossiers de node_modules
-            FOUND=$(find node_modules/react-native -name "gradle-plugin" -type d 2>/dev/null | head -1)
-            if [ -n "$FOUND" ]; then
-              mkdir -p node_modules/@react-native
-              cp -r "$FOUND" node_modules/@react-native/gradle-plugin
-              echo "✅ Copied gradle-plugin from: $FOUND"
-            else
-              echo "❌ gradle-plugin not found — listing react-native deps:"
-              ls node_modules/react-native/node_modules/ 2>/dev/null | head -20 || true
-              ls node_modules/@react-native/ 2>/dev/null | head -20 || true
-              exit 1
-            fi
+            echo "✅ settings.gradle already present"
+          fi
+
+          # Check for build.gradle.kts
+          if [ ! -f "$PLUGIN_DIR/build.gradle.kts" ] && [ ! -f "$PLUGIN_DIR/build.gradle" ]; then
+            echo "⚠️ build.gradle.kts missing — contents:"
+            find "$PLUGIN_DIR" -name "*.gradle*" -o -name "*.jar" 2>/dev/null | head -20
+          else
+            echo "✅ build.gradle found"
           fi
 
       # ── 7. Télécharger gradle-wrapper.jar ────────────────────────────────
@@ -64,6 +66,7 @@ jobs:
           mkdir -p android/gradle/wrapper
           curl -fsSL -o android/gradle/wrapper/gradle-wrapper.jar \
             "https://github.com/gradle/gradle/raw/v8.6.0/gradle/wrapper/gradle-wrapper.jar"
+          ls -lh android/gradle/wrapper/gradle-wrapper.jar
 
       # ── 8. Keystore de debug ──────────────────────────────────────────────
       - name: Generate debug keystore
