@@ -43,10 +43,19 @@ android {
 }
 
 dependencies {
-    // React Native
+    // React Native core
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:hermes-android")
 
     // WireGuard Android tunnel library (official)
     implementation("com.wireguard.android:tunnel:1.0.20230706")
+
+    // Native modules — manually linked (autolinking disabled, see settings.gradle)
+    implementation project(':react-native-screens')
+    implementation project(':react-native-gesture-handler')
+    implementation project(':react-native-reanimated')
+    implementation project(':react-native-safe-area-context')
+    implementation project(':react-native-async-storage')
+    implementation project(':react-native-vector-icons')
+    implementation project(':react-native-netinfo')
 }
