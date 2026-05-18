@@ -37,44 +37,14 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      # ── 6. Patch gradle plugin — ajoute com.facebook.react.settings ──────
-      #
-      # @react-native/gradle-plugin@0.73.4 ne déclare pas com.facebook.react.settings
-      # dans son bloc gradlePlugin{}, alors que la classe ReactSettingsPlugin existe.
-      # Ce patch l'ajoute avec awk (pas de heredoc = pas de conflit YAML).
-      #
-      - name: Patch React Native Gradle plugin
+      # ── 6. Verify Gradle plugin setup ────────────────────────────────────
+      # com.facebook.react.settings was removed from android/settings.gradle
+      # because ReactSettingsPlugin does not exist in @react-native/gradle-plugin@0.73.4.
+      # Autolinking is handled by ReactPlugin in app/build.gradle.
+      - name: Verify Gradle plugin setup
         run: |
-          PLUGIN_DIR="node_modules/@react-native/gradle-plugin"
-          BUILD_KTS="$PLUGIN_DIR/build.gradle.kts"
-
-          echo "=== npm version ==="
-          python3 -c "import json; d=json.load(open('$PLUGIN_DIR/package.json')); print('version:', d['version'])" 2>/dev/null || echo "?"
-
-          echo ""
-          echo "=== ReactSettingsPlugin.kt present? ==="
-          find "$PLUGIN_DIR/src" -name "ReactSettingsPlugin.kt" 2>/dev/null | head -5 || echo "(not found)"
-
-          echo ""
-          echo "=== com.facebook.react.settings in build.gradle.kts? ==="
-          if grep -q "com.facebook.react.settings" "$BUILD_KTS" 2>/dev/null; then
-            echo "YES — already registered, no patch needed"
-          else
-            echo "NO — patching with awk..."
-            awk '
-              /create\("reactrootproject"\)/ {
-                print "    create(\"reactSettings\") {"
-                print "      id = \"com.facebook.react.settings\""
-                print "      implementationClass = \"com.facebook.react.ReactSettingsPlugin\""
-                print "    }"
-              }
-              { print }
-            ' "$BUILD_KTS" > /tmp/patched_build.gradle.kts
-            mv /tmp/patched_build.gradle.kts "$BUILD_KTS"
-            echo "Patched! Verifying..."
-            grep -n "com.facebook.react.settings" "$BUILD_KTS" && echo "OK" || echo "PATCH FAILED"
-          fi
-
+          echo "=== @react-native/gradle-plugin version ==="
+          python3 -c "import json; d=json.load(open('node_modules/@react-native/gradle-plugin/package.json')); print('version:', d['version'])" 2>/dev/null || echo "?"
           echo ""
           echo "=== android/settings.gradle ==="
           cat android/settings.gradle

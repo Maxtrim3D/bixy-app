@@ -7,13 +7,9 @@ pluginManagement {
     }
 }
 
-plugins {
-    id("com.facebook.react.settings")
-}
-
-extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-    ex.autolinkLibrariesFromCommand()
-}
+// NOTE: com.facebook.react.settings is NOT registered in @react-native/gradle-plugin@0.73.4
+// (ReactSettingsPlugin.kt does not exist in this version). Autolinking is handled by
+// ReactPlugin during the build phase. BixyApp has no RN native modules to autolink.
 
 rootProject.name = 'BixyApp'
 include ':app'
