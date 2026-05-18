@@ -7,9 +7,19 @@ pluginManagement {
     }
 }
 
-// NOTE: com.facebook.react.settings is NOT registered in @react-native/gradle-plugin@0.73.4
-// (ReactSettingsPlugin.kt does not exist in this version). Autolinking is handled by
-// ReactPlugin during the build phase. BixyApp has no RN native modules to autolink.
+// NOTE: ReactSettingsPlugin not used (not in @react-native/gradle-plugin@0.73.4).
+// We manually declare the local React Native Maven repo so that com.facebook.react:react-android
+// (and its resources like rn_edit_text_material) resolve from node_modules, not Maven Central.
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        maven { url = uri("$rootDir/../node_modules/react-native/android") }
+        maven { url = uri("$rootDir/../node_modules/jsc-android/dist") }
+        google()
+        mavenCentral()
+        maven { url = uri("https://www.jitpack.io") }
+    }
+}
 
 rootProject.name = 'BixyApp'
 include ':app'
