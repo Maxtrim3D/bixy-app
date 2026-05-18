@@ -29,11 +29,9 @@ export function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      const form = new URLSearchParams();
-      form.append('username', email.trim());
-      form.append('password', password);
-      const res = await api.post<LoginResponse>('/auth/login', form.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      const res = await api.post<LoginResponse>('/auth/login', {
+        email: email.trim(),
+        password,
       });
       await setAuth(res.data.access_token, res.data.user);
     } catch (err: unknown) {
