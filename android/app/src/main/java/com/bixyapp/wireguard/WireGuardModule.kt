@@ -53,7 +53,7 @@ class WireGuardModule(private val reactContext: ReactApplicationContext)
             if (backend == null) {
                 backend = GoBackend(reactContext)
             }
-            val config = Config.parse(StringReader(configStr))
+            val config = Config.parse(StringReader(configStr).buffered())
             val tunnel = AppTunnel("bixy")
             activeTunnel = tunnel
             backend!!.setState(tunnel, Tunnel.State.UP, config)
