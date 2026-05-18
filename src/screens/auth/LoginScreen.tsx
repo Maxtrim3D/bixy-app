@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useConnectionStore } from '@/store/connectionStore';
 import { Colors } from '@/constants/colors';
 import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
-import type { LoginResponse } from '@/types';
+import type { AuthUser } from '@/types';
 
 export function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -29,11 +29,21 @@ export function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.post<LoginResponse>('/auth/login', {
+      const res = await api.post('/auth/login', {
         email: email.trim(),
         password,
       });
-      await setAuth(res.data.access_token, res.data.user);
+      const d = res.data;
+      const authUser: AuthUser = {
+        id: d.user_id,
+        email: email.trim().toLowerCase(),
+        full_name: d.full_name,
+        display_name: d.display_name ?? null,
+        app_name: d.display_name ?? d.full_name,
+        role: d.role,
+        locale: d.locale,
+      };
+      await setAuth(d.access_token, authUser);
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(detail ?? 'Identifiants incorrects.');
