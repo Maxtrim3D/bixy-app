@@ -7,49 +7,46 @@ on:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build release APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
-      # ── 1. Code ───────────────────────────────────────────────────────────
+      # 1. Code
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Node.js ────────────────────────────────────────────────────────
+      # 2. Node.js
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # ── 3. JDK 17 ─────────────────────────────────────────────────────────
+      # 3. JDK 17
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: 17
           distribution: temurin
 
-      # ── 4. Android SDK ────────────────────────────────────────────────────
+      # 4. Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # ── 5. Dépendances JS ────────────────────────────────────────────────
+      # 5. JS dependencies (pinned exact versions - no lockfile drift)
       - name: Install Node dependencies
         run: npm install
 
-      # ── 6. Verify Gradle plugin setup ────────────────────────────────────
-      # com.facebook.react.settings was removed from android/settings.gradle
-      # because ReactSettingsPlugin does not exist in @react-native/gradle-plugin@0.73.4.
-      # Autolinking is handled by ReactPlugin in app/build.gradle.
+      # 6. Verify Gradle plugin setup
       - name: Verify Gradle plugin setup
         run: |
           echo "=== @react-native/gradle-plugin version ==="
-          python3 -c "import json; d=json.load(open('node_modules/@react-native/gradle-plugin/package.json')); print('version:', d['version'])" 2>/dev/null || echo "?"
+          node -e "console.log(require('./node_modules/@react-native/gradle-plugin/package.json').version)" 2>/dev/null || echo "?"
           echo ""
           echo "=== android/settings.gradle ==="
           cat android/settings.gradle
 
-      # ── 7. Gradle wrapper JAR ─────────────────────────────────────────────
+      # 7. Gradle wrapper JAR
       - name: Download Gradle wrapper JAR
         run: |
           mkdir -p android/gradle/wrapper
@@ -57,7 +54,7 @@ jobs:
             "https://github.com/gradle/gradle/raw/v8.3.0/gradle/wrapper/gradle-wrapper.jar"
           ls -lh android/gradle/wrapper/gradle-wrapper.jar
 
-      # ── 8. Keystore debug ────────────────────────────────────────────────
+      # 8. Debug keystore (used for release signing in CI - see app/build.gradle signingConfigs)
       - name: Generate debug keystore
         run: |
           mkdir -p android/app
@@ -68,29 +65,32 @@ jobs:
             -dname "CN=Bixy Debug,O=Maxtrim3D,C=BE" \
             -storepass android -keypass android
 
-      # ── 9. gradlew exécutable ────────────────────────────────────────────
+      # 9. gradlew executable
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 10. Build APK ─────────────────────────────────────────────────────
-      - name: Build debug APK
+      # 10. Build release APK
+      # assembleRelease always bundles the JS - no Metro server needed on device.
+      # The release build type uses signingConfigs.debug (see app/build.gradle)
+      # so the keystore generated above is used for signing.
+      - name: Build release APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
 
-      # ── 11. Upload APK ────────────────────────────────────────────────────
+      # 11. Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bixy-debug-${{ github.run_number }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Bixy-release-${{ github.run_number }}
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
 
-      # ── 12. Résumé ────────────────────────────────────────────────────────
+      # 12. Summary
       - name: Summary
         run: |
-          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          APK=android/app/build/outputs/apk/release/app-release.apk
           SIZE=$(du -sh $APK | cut -f1)
-          echo "APK Bixy: app-debug.apk - Taille: $SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "APK Bixy: app-release.apk - Taille: $SIZE" >> $GITHUB_STEP_SUMMARY
           echo "Telecharge dans l'onglet Artifacts." >> $GITHUB_STEP_SUMMARY
