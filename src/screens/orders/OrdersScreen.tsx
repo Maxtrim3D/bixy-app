@@ -8,9 +8,10 @@ import { Colors } from '@/constants/colors';
 interface Order {
   id: number;
   name: string;
-  partner_name: string;
-  date_order: string;
-  amount_total: number;
+  partner_name?: string;  // legacy
+  partner?: string;       // backend field
+  date_order: string | null;
+  amount_total: number | null;
   state: string;
   currency: string;
 }
@@ -26,14 +27,19 @@ const STATE_LABELS: Record<string, { label: string; color: string }> = {
 export function OrdersScreen() {
   const [search, setSearch] = useState('');
 
-  const { data: orders, isLoading, isRefetching, refetch } = useQuery<Order[]>({
+  const { data: orders, isLoading, isRefetching, refetch, error } = useQuery<Order[]>({
     queryKey: ['orders'],
-    queryFn: () => api.get('/orders', { params: { limit: 100 } }).then((r) => r.data),
+    queryFn: () =>
+      api.get('/orders', { params: { per_page: 100 } }).then((r) => {
+        // Backend returns { items: [...], total, page, per_page }
+        const d = r.data;
+        return Array.isArray(d) ? d : (d.items ?? []);
+      }),
   });
 
   const filtered = (orders ?? []).filter((o) => {
     const q = search.toLowerCase();
-    return !q || o.name.toLowerCase().includes(q) || o.partner_name.toLowerCase().includes(q);
+    return !q || o.name.toLowerCase().includes(q) || (o.partner_name ?? o.partner ?? '').toLowerCase().includes(q);
   });
 
   return (
@@ -53,7 +59,9 @@ export function OrdersScreen() {
         contentContainerStyle={{ padding: 12 }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.brand} />}
         ListEmptyComponent={
-          <Text style={styles.empty}>{isLoading ? 'Chargement…' : 'Aucune commande.'}</Text>
+          <Text style={styles.empty}>
+            {isLoading ? 'Chargement…' : error ? `Erreur: ${(error as Error).message}` : 'Aucune commande.'}
+          </Text>
         }
         renderItem={({ item }) => {
           const st = STATE_LABELS[item.state] ?? { label: item.state, color: Colors.textMuted };
@@ -63,10 +71,10 @@ export function OrdersScreen() {
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={[styles.state, { color: st.color }]}>{st.label}</Text>
               </View>
-              <Text style={styles.partner}>{item.partner_name}</Text>
+              <Text style={styles.partner}>{item.partner ?? item.partner_name ?? '—'}</Text>
               <View style={styles.row}>
-                <Text style={styles.meta}>{item.date_order?.slice(0, 10)}</Text>
-                <Text style={styles.amount}>{item.amount_total.toFixed(2)} {item.currency}</Text>
+                <Text style={styles.meta}>{item.date_order?.slice(0, 10) ?? '—'}</Text>
+                <Text style={styles.amount}>{(item.amount_total ?? 0).toFixed(2)} {item.currency}</Text>
               </View>
             </View>
           );

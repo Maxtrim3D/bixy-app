@@ -8,20 +8,24 @@ import { Colors } from '@/constants/colors';
 interface Task {
   id: string;
   title: string;
-  assigned_to: string | null;
+  assigned_to_name: string | null;
   due_date: string | null;
   status: string;
   priority: string;
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high: Colors.error, medium: Colors.warning, low: Colors.success,
+  urgent: Colors.error,
+  high: Colors.error,
+  normal: Colors.warning,
+  medium: Colors.warning,
+  low: Colors.success,
 };
 
 export function TasksScreen() {
-  const { data: tasks, isLoading, isRefetching, refetch } = useQuery<Task[]>({
+  const { data: tasks, isLoading, isRefetching, refetch, error } = useQuery<Task[]>({
     queryKey: ['tasks'],
-    queryFn: () => api.get('/tasks').then((r) => r.data),
+    queryFn: () => api.get('/tasks').then((r) => Array.isArray(r.data) ? r.data : (r.data.items ?? [])),
     refetchInterval: 30_000,
   });
 
@@ -32,7 +36,11 @@ export function TasksScreen() {
         keyExtractor={(t) => t.id}
         contentContainerStyle={{ padding: 12 }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.brand} />}
-        ListEmptyComponent={<Text style={styles.empty}>{isLoading ? 'Chargement…' : 'Aucune tâche.'}</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {isLoading ? 'Chargement…' : error ? `Erreur: ${(error as Error).message}` : 'Aucune tâche.'}
+          </Text>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.row}>
@@ -40,7 +48,7 @@ export function TasksScreen() {
               <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
             </View>
             <View style={styles.meta}>
-              {item.assigned_to && <Text style={styles.metaText}>👤 {item.assigned_to}</Text>}
+              {item.assigned_to_name && <Text style={styles.metaText}>👤 {item.assigned_to_name}</Text>}
               {item.due_date && <Text style={styles.metaText}>📅 {item.due_date.slice(0, 10)}</Text>}
               <Text style={styles.status}>{item.status}</Text>
             </View>
