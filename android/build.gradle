@@ -17,3 +17,20 @@ buildscript {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
     }
 }
+
+// Force all com.facebook.react artifacts (react-android, hermes-android, etc.) to resolve
+// exclusively from the local node_modules Maven repo, never from Maven Central.
+// This guarantees rn_edit_text_material and other bundled resources are found.
+allprojects {
+    repositories {
+        maven { url uri("$rootDir/../node_modules/react-native/android") }
+        maven { url uri("$rootDir/../node_modules/jsc-android/dist") }
+        google()
+        mavenCentral {
+            content {
+                excludeGroup "com.facebook.react"
+            }
+        }
+        maven { url 'https://www.jitpack.io' }
+    }
+}
