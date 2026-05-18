@@ -20,12 +20,16 @@ export function getApiBase(): string {
 
 async function pingLocal(): Promise<boolean> {
   try {
-    await axios.get(`${LOCAL_BASE_URL}/health`, {
+    // Use /api/health (routed to backend by Traefik PathPrefix('/api')).
+    // Accept any HTTP response (including 4xx) — we only care the server is up,
+    // not that the path returns 200.
+    await axios.get(`${LOCAL_BASE_URL}/api/health`, {
       timeout: PING_TIMEOUT_MS,
-      headers: { Accept: 'application/json' },
+      validateStatus: () => true,   // don't throw on non-2xx
     });
     return true;
   } catch {
+    // Only reaches here on network-level failure (ECONNREFUSED, timeout…)
     return false;
   }
 }
