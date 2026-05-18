@@ -80,7 +80,7 @@ export function AttendanceScreen() {
         contentContainerStyle={{ padding: 12 }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.brand} />}
         ListEmptyComponent={
-          <Text style={styles.empty}>{isLoading ? 'Chargement…' : 'Aucun pointage aujourd'hui.'}</Text>
+          <Text style={styles.empty}>{isLoading ? 'Chargement…' : "Aucun pointage aujourd'hui."}</Text>
         }
         renderItem={({ item }) => (
           <View style={styles.record}>

@@ -23,7 +23,7 @@ export function LoginScreen() {
 
   const login = async () => {
     if (!email.trim() || !password.trim()) {
-      setError('Remplissez l'email et le mot de passe.');
+      setError("Remplissez l'email et le mot de passe.");
       return;
     }
     setLoading(true);
