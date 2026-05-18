@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
 import { useConnectionStore } from '@/store/connectionStore';
+import { initConnection } from '@/services/ConnectionManager';
 import { Colors } from '@/constants/colors';
 import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
 import type { AuthUser } from '@/types';
@@ -19,7 +20,14 @@ export function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const retryConnection = async () => {
+    setRetrying(true);
+    setError(null);
+    try { await initConnection(); } finally { setRetrying(false); }
+  };
 
   const login = async () => {
     if (!email.trim() || !password.trim()) {
@@ -41,12 +49,20 @@ export function LoginScreen() {
         display_name: d.display_name ?? null,
         app_name: d.display_name ?? d.full_name,
         role: d.role,
-        locale: d.locale,
+        locale: d.locale ?? 'fr',
       };
       await setAuth(d.access_token, authUser);
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail ?? 'Identifiants incorrects.');
+      const e = err as { response?: { data?: { detail?: string } }; message?: string; code?: string };
+      if (e.response?.data?.detail) {
+        // Server replied with an error (401, 403…)
+        setError(e.response.data.detail);
+      } else if (e.code === 'ECONNREFUSED' || e.code === 'ERR_NETWORK' || e.code === 'ECONNABORTED' || !e.response) {
+        // Network unreachable / timeout
+        setError('Serveur inaccessible. Vérifiez votre réseau ou votre VPN.');
+      } else {
+        setError(`Erreur ${e.response?.status ?? '?'} — réessayez.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -96,6 +112,13 @@ export function LoginScreen() {
           {error && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
+              {mode === 'offline' && (
+                <TouchableOpacity onPress={retryConnection} disabled={retrying} style={styles.retryBtn}>
+                  <Text style={styles.retryText}>
+                    {retrying ? 'Reconnexion…' : 'Réessayer la connexion'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -129,6 +152,8 @@ const styles = StyleSheet.create({
   input:    { backgroundColor: Colors.card, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: Colors.textPrimary },
   errorBox: { marginTop: 12, backgroundColor: '#450a0a', borderRadius: 8, padding: 10 },
   errorText:{ color: '#fca5a5', fontSize: 13 },
+  retryBtn: { marginTop: 8, alignSelf: 'flex-start' },
+  retryText:{ color: '#fca5a5', fontSize: 12, textDecorationLine: 'underline' },
   btn:      { marginTop: 24, backgroundColor: Colors.brand, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   btnDisabled: { opacity: 0.5 },
   btnText:  { color: '#fff', fontWeight: '700', fontSize: 15 },
