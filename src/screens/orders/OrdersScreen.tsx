@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, TextInput } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
@@ -26,21 +26,28 @@ const STATE_LABELS: Record<string, { label: string; color: string }> = {
 
 export function OrdersScreen() {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search → triggers server-side query after 400ms idle
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
 
   const { data: orders, isLoading, isRefetching, refetch, error } = useQuery<Order[]>({
-    queryKey: ['orders'],
+    queryKey: ['orders', debouncedSearch],
     queryFn: () =>
-      api.get('/orders', { params: { per_page: 100 } }).then((r) => {
-        // Backend returns { items: [...], total, page, per_page }
+      api.get('/orders', {
+        params: { per_page: 100, search: debouncedSearch || undefined },
+      }).then((r) => {
         const d = r.data;
         return Array.isArray(d) ? d : (d.items ?? []);
       }),
   });
 
-  const filtered = (orders ?? []).filter((o) => {
-    const q = search.toLowerCase();
-    return !q || o.name.toLowerCase().includes(q) || (o.partner_name ?? o.partner ?? '').toLowerCase().includes(q);
-  });
+  const filtered = orders ?? [];
 
   return (
     <Screen scrollable={false} padding={false}>
